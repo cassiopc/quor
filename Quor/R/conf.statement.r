@@ -42,10 +42,10 @@ conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE
         pooleddata[[2]] <- data[[i]]
         if(k < 0) {
             if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS SMALLER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
-            cs <- conf.statement(pooleddata,quantiles,ordering=c(1,2),verbose=verbose)
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(2,1),verbose=verbose)
         } else {
             if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS GREATER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
-            cs <- conf.statement(pooleddata,quantiles,ordering=c(2,1),verbose=verbose)
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(1,2),verbose=verbose)
         }
         res <- rbind(res,cs$confidence)
     }
@@ -120,7 +120,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     }
     ## Conditions for ordering
     if (is.null(ordering)) {
-        ordering = t(matrix(data=unlist(permn(1:ngroups)),nrow=ngroups,ncol=factorial(ngroups)))
+        ordering = t(matrix(data=unlist(combinat::permn(1:ngroups)),nrow=ngroups,ncol=factorial(ngroups)))
         ## by default, check all orderings
     } else {
         if (is.vector(ordering)) {
@@ -274,10 +274,10 @@ print.conf.statement <- function(x, ...) {
         }
         conf = apply(as.matrix(x$confidence[,1:m]),2,max)
         for(i in 1:n) {
-            if(x$pooled) cat(x$order[i], " : ", paste(x$confidence[i,1:m]),dots,"\n")
-            else cat(paste(x$order[i,]), " : ", paste(x$confidence[i,1:m]),dots,"\n")
+            if(x$pooled) cat(x$order[i], " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
+            else cat(paste(x$order[i,]), " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
         }
-        cat("Best : ", paste(conf),"\n")
+        cat("Best : ", paste(exp(conf)),"\n")
         cat("\n")
         cat("Total time spent: ", sprintf("%.3f",x$run.time)," seconds \n",sep="")
         cat("-----------------------------------------------------------\n")

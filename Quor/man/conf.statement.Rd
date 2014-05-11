@@ -7,6 +7,7 @@
 \name{conf.statement}
 
 \alias{conf.statement}
+\alias{conf.statement.pooled}
 \alias{print.conf.statement}
 
 \title{Confidence Statement for Ordered Population Quantiles}
@@ -15,6 +16,7 @@
 }
 \usage{
  conf.statement(data,quantiles=NULL,ordering=NULL,verbose=TRUE)
+ conf.statement.pooled(data,quantiles=NULL,ordering=NULL,verbose=TRUE)
 }
 \arguments{
 \item{data}{is a list with all groups to be test. Each element can be
@@ -38,6 +40,10 @@
   Mj is the population median of the group j.
 
   The group j is the j-th vector in the data (a list object).
+
+  If the conf.statement.pooled version is used, then each groups is checked
+  against all the others, which are pooled together, so the computation always
+  involves only two groups at a time (the target group and the pooled one).
 }
 \value{
   A list (with class "conf.statement") with components:
