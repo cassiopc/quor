@@ -1,4 +1,5 @@
 importFrom(combinat,permn)
 useDynLib(Quor, quorccore)
+importFrom(combinat,permn)
 export(conf.statement, print.conf.statement)
 S3method(print, conf.statement)

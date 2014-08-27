@@ -16,6 +16,53 @@
 ##    You should have received a copy of the GNU General Public License
 ##    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
+    Call <- match.call()
+
+    ## Conditions for data
+    if (!is.list(data))
+        stop("data is not a list")
+    ngroups = length(data)
+    if(verbose) cat(paste('[info] There are',ngroups,'groups\n'))
+
+    if (is.null(quantiles)) quantiles <- c(0.5,0.5)
+    if (length(quantiles) != 2)
+        stop('quantiles must have two numbers for pooled confidences')
+    if (is.null(ordering)) ordering <- c(1:ngroups,-(1:ngroups))
+    if (!is.vector(ordering))
+        stop('ordering must be a vector with the groups for pooled confidences')
+    initial.time <- proc.time()[3]
+    res <- c()
+    for(k in ordering) {
+        i <- abs(k)
+        pooleddata <- NULL
+        for(j in 1:ngroups) {
+            if(i != j) pooleddata[[1]] <- cbind(pooleddata[[1]],data[[j]])
+        }
+        pooleddata[[2]] <- data[[i]]
+        if(k < 0) {
+            if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS SMALLER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(2,1),verbose=verbose)
+        } else {
+            if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS GREATER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(1,2),verbose=verbose)
+        }
+        res <- rbind(res,cs$confidence)
+    }
+    out <- NULL
+    out$call <- Call
+    out$pooled <- TRUE
+    out$total.groups <- ngroups
+    out$total.covariates <- dim(res)[2]
+    out$order <- ordering
+    out$quantiles <- quantiles
+    out$confidence <- res
+    out$run.time <- (proc.time()[3]-initial.time)
+    if(verbose) cat(paste('[info] TOTAL COMPUTATION TOOK',out$run.time,'SECONDS to be completed\n'))
+    class(out) <- "conf.statement"
+    return(out)
+}
+
 ################################################################################
 ## Evaluate the confidence statement for populations' quantiles
 conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
@@ -36,7 +83,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     if (!is.list(data))
         stop("data is not a list")
     ngroups = length(data)
-    if(verbose) print(paste('[info] There are',ngroups,'groups'))
+    if(verbose) cat(paste('[info] There are',ngroups,'groups\n'))
     nrows <- 0
     if (ngroups < 2)
         stop("data must have a minimum of 2 groups")
@@ -51,7 +98,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
             stop(paste("data[[",i,"]] is not numeric",sep=""))
         if (i==1) {
             nrows = dim(data[[i]])[1]
-            if(verbose) print(paste('[info] There are',nrows,'covariates to be analyzed'))
+            if(verbose) cat(paste('[info] There are',nrows,'covariates to be analyzed\n'))
         }
         else if(nrows < 0)
             stop("Cannot mix vectors and matrices")
@@ -73,7 +120,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     }
     ## Conditions for ordering
     if (is.null(ordering)) {
-        ordering = t(matrix(data=unlist(permn(1:ngroups)),nrow=ngroups,ncol=factorial(ngroups)))
+        ordering = t(matrix(data=unlist(combinat::permn(1:ngroups)),nrow=ngroups,ncol=factorial(ngroups)))
         ## by default, check all orderings
     } else {
         if (is.vector(ordering)) {
@@ -85,6 +132,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
             stop("ordering must be a vector/matrix")
         if (dim(ordering)[2] != ngroups)
             stop("ordering must have number of rows equal to number of groups")
+        ordering <- matrix(as.integer(ordering),nrow=dim(ordering)[1],ncol=dim(ordering)[2])
         ck = apply(ordering, 1, function(x) (!is.integer(x) || length(unique(x)) != ngroups || length(which((x < 1) | (x > ngroups))) > 0) )
         if(sum(ck) > 0)
             stop("ordering must contain distinct integers between 1 and number of groups")
@@ -101,12 +149,12 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
         for(j in 1:nrows)
             data[[i]][j,] <- sort(data[[i]][j,],na.last=T)
         m[i] <- dim(data[[i]])[2]
- #       print(data[[i]])
-        if(verbose) print(paste('[info] Group',i,'has',m[i],'elements'))
+                                        #       print(data[[i]])
+        if(verbose) cat(paste('[info] Group',i,'has',m[i],'elements\n'))
     }
 
     ## Build cache of incomplete betas / cummulative binomials
-    if(verbose) print('[info] Building caches')
+    if(verbose) cat('[info] Building caches\n')
     ## log I_x(a,b) is pbeta(x, a, b, log.p=TRUE)
     maxm = max(m)
     lpr <- matrix(0,ngroups,maxm+1)
@@ -122,112 +170,117 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     }
 
     ## Compute the confidence for each covariate
-    if(verbose) print('[info] Starting to process covariates')
+    if(verbose) cat('[info] Starting to process covariates\n')
     rlist <- .Call('quorccore',as.list(data),as.matrix(m),
-                as.matrix(lpr),as.matrix(upr),as.integer(ngroups),as.integer(maxm),
-                as.integer(nrows),as.matrix(ordering),as.integer(verbose),PACKAGE='Quor')
+                   as.matrix(lpr),as.matrix(upr),as.integer(ngroups),as.integer(maxm),
+                   as.integer(nrows),as.matrix(ordering),as.integer(verbose),PACKAGE='Quor')
     ## break down the list with results into a matrix
     result <- t(matrix(data=unlist(rlist),nrow=nrows,ncol=dim(ordering)[1]))
-    
-        ####### THE FOLLOW PART HAS BEEN IMPLEMENTED IN C
-        ## # R CMD SHLIB -o Quor.so core.c
-        ## # dyn.load('Quor/src/Quor.so')
-    
-        ## mpr <- list()
-        ## if (ngroups > 2) {
-        ##     ## When more than 2 groups, build also a cache of differences in cummulative binomials
-        ##     ## This takes in total O(ngroups*m^2) time, where m is the size of data for one covariate
-        ##     ## This step might be slow if we think of a single covariate, but it greatly speeds up
-        ##     ## computations in case there are many covariates (much more than ngroups) to be processed
-        ##     mpr[[ngroups]] <- NA
-        ##     for(i in 1:ngroups) {
-        ##         mpr[[i]] <- matrix(-Inf,maxm+1,maxm+1)
-        ##         for(j in 1:(m[i]-1)) {
-        ##             for(k in (j+1):m[i]) {
-        ##                 ## log( exp(lpr[i,k]) - exp(lpr(i,j)) )
-        ##                 mpr[[i]][j,k] <- lpr[i,k] + log(1 - exp(lpr[i,j]-lpr[i,k]))
-        ##             }
-        ##         }
-        ##     }
-        ## }
-        ## for(ires in 1:nrows) {
-        ##     if(verbose && (ires %% 1000) == 0) cat('.')        
-        ## ## First, for each element in a group i, mark who is the closest element
-        ## ## to it in the next group i+1. The loop takes O(m) time in total. The
-        ## ## allocation takes O(m*ngroups) space, which is linear in the input
-        ## Jl <- matrix(NA,ngroups-1,maxm)
-        ## for (i in 1:(ngroups-1)) {
-        ##     jnext = 1
-        ##     for(j in 1:m[i]) {
-        ##         while(jnext <= m[i+1] && data[[i]][ires,j] >= data[[i+1]][ires,jnext]) jnext <- jnext+1
-        ##         Jl[i,j] <- jnext
-        ##     }
-        ## }
-        ## ## The dynamic programming begins. The allocation takes O(m*ngroups) space
-        ## D <- matrix(-Inf,ngroups,maxm)
-        ## ## The first line gets simply the prob of the quantile to the left of j, for each j
-        ## D[1,] <- lpr[1,1:maxm]
-        ## ## If there only 2 groups, next loop is skipped. If run, it takes O(m^2) time in total
-        ## if(ngroups > 2) {
-        ##     for (i in 2:(ngroups-1)) {
-        ##         for (j in 1:m[i]) {
-        ##             ## For each group, for each position j as separator, take the best solution for
-        ##             ## all previous groups that are completely to the left of the separator, plus
-        ##             ## the chance that the quantile of the current group will fall between that best
-        ##             ## position for all previous groups and the separator j
-        ##             D[i,j] <- max(D[i-1,] + mpr[[i]][Jl[i-1,],j])
-        ##         }
-        ##     }
-        ## }
-        ## ## Compose the result as the best solution found until the previous group with the prob
-        ## ## that the final quantile falls to the right of the separator (the best separator is
-        ## ## obtained in the maximization. The line takes O(m) time
-        ## result[ires] <- max(D[ngroups-1,] + upr[Jl[ngroups-1,]])
-        ##  }
-    
+
+####### THE FOLLOW PART HAS BEEN IMPLEMENTED IN C
+    ## # R CMD SHLIB -o Quor.so core.c
+    ## # dyn.load('Quor/src/Quor.so')
+
+    ## mpr <- list()
+    ## if (ngroups > 2) {
+    ##     ## When more than 2 groups, build also a cache of differences in cummulative binomials
+    ##     ## This takes in total O(ngroups*m^2) time, where m is the size of data for one covariate
+    ##     ## This step might be slow if we think of a single covariate, but it greatly speeds up
+    ##     ## computations in case there are many covariates (much more than ngroups) to be processed
+    ##     mpr[[ngroups]] <- NA
+    ##     for(i in 1:ngroups) {
+    ##         mpr[[i]] <- matrix(-Inf,maxm+1,maxm+1)
+    ##         for(j in 1:(m[i]-1)) {
+    ##             for(k in (j+1):m[i]) {
+    ##                 ## log( exp(lpr[i,k]) - exp(lpr(i,j)) )
+    ##                 mpr[[i]][j,k] <- lpr[i,k] + log(1 - exp(lpr[i,j]-lpr[i,k]))
+    ##             }
+    ##         }
+    ##     }
+    ## }
+    ## for(ires in 1:nrows) {
+    ##     if(verbose && (ires %% 1000) == 0) cat('.')        
+    ## ## First, for each element in a group i, mark who is the closest element
+    ## ## to it in the next group i+1. The loop takes O(m) time in total. The
+    ## ## allocation takes O(m*ngroups) space, which is linear in the input
+    ## Jl <- matrix(NA,ngroups-1,maxm)
+    ## for (i in 1:(ngroups-1)) {
+    ##     jnext = 1
+    ##     for(j in 1:m[i]) {
+    ##         while(jnext <= m[i+1] && data[[i]][ires,j] >= data[[i+1]][ires,jnext]) jnext <- jnext+1
+    ##         Jl[i,j] <- jnext
+    ##     }
+    ## }
+    ## ## The dynamic programming begins. The allocation takes O(m*ngroups) space
+    ## D <- matrix(-Inf,ngroups,maxm)
+    ## ## The first line gets simply the prob of the quantile to the left of j, for each j
+    ## D[1,] <- lpr[1,1:maxm]
+    ## ## If there only 2 groups, next loop is skipped. If run, it takes O(m^2) time in total
+    ## if(ngroups > 2) {
+    ##     for (i in 2:(ngroups-1)) {
+    ##         for (j in 1:m[i]) {
+    ##             ## For each group, for each position j as separator, take the best solution for
+    ##             ## all previous groups that are completely to the left of the separator, plus
+    ##             ## the chance that the quantile of the current group will fall between that best
+    ##             ## position for all previous groups and the separator j
+    ##             D[i,j] <- max(D[i-1,] + mpr[[i]][Jl[i-1,],j])
+    ##         }
+    ##     }
+    ## }
+    ## ## Compose the result as the best solution found until the previous group with the prob
+    ## ## that the final quantile falls to the right of the separator (the best separator is
+    ## ## obtained in the maximization. The line takes O(m) time
+    ## result[ires] <- max(D[ngroups-1,] + upr[Jl[ngroups-1,]])
+    ##  }
+
     out <- NULL
     out$call <- Call
+    out$pooled <- FALSE
     out$total.groups <- length(m)
     out$total.covariates <- nrows
     out$order <- ordering
     out$quantiles <- quantiles
     out$confidence <- result
     out$run.time <- (proc.time()[3]-initial.time)
-    if(verbose) print(paste('[info] Computation took',out$run.time,'seconds to be completed'))
+    if(verbose) cat(paste('[info] Computation took',out$run.time,'seconds to be completed\n'))
     class(out) <- "conf.statement"
     return(out)
 }
 
 print.conf.statement <- function(x, ...) {
-  print(x$call)
+    cat(paste(x$call,'\n'))
 
-  if (sum(x$confidence <= 1) == 0) {
-    cat("It was not possible to find a confidence statement.\n")
-  } else {
-    cat("-----------------------------------------------------------\n")
-    cat("Confidence Statement of ordered population quantiles:\n",sep="")
-    cat("\n")
-    if(is.matrix(x$order))
-        n = dim(x$order)[1]
-    else n = 1
-    cat("Number of permutations:",n,"\n")
-    cat("Number of groups:",x$total.groups,"\n")
-    cat("Number of variables:",x$total.covariates,"\n")
-    cat("\n")
-    dots=''
-    m = dim(x$confidence)[2]
-    if (m > 10) {
-        dots='...'
-        m = 10
+    if (sum(x$confidence <= 1) == 0) {
+        cat("It was not possible to find a confidence statement.\n")
+    } else {
+        cat("-----------------------------------------------------------\n")
+        cat("Confidence Statement of ordered population quantiles:\n",sep="")
+        cat("\n")
+        if(is.matrix(x$order))
+            n = dim(x$order)[1]
+        else {
+            if(x$pooled) n = length(x$order)
+            else n = 1
+        }
+        cat("Number of permutations:",n,"\n")
+        cat("Number of groups:",x$total.groups,"\n")
+        cat("Number of variables:",x$total.covariates,"\n")
+        cat("\n")
+        dots=''
+        m = dim(x$confidence)[2]
+        if (m > 10) {
+            dots='...'
+            m = 10
+        }
+        conf = apply(as.matrix(x$confidence[,1:m]),2,max)
+        for(i in 1:n) {
+            if(x$pooled) cat(x$order[i], " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
+            else cat(paste(x$order[i,]), " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
+        }
+        cat("Best : ", paste(exp(conf)),"\n")
+        cat("\n")
+        cat("Total time spent: ", sprintf("%.3f",x$run.time)," seconds \n",sep="")
+        cat("-----------------------------------------------------------\n")
+        cat("\n")
     }
-    conf = apply(as.matrix(x$confidence[,1:m]),2,max)
-    for(i in 1:n) {
-        cat(paste(x$order[i,]), " : ", paste(x$confidence[i,1:m]),dots,"\n")
-    }
-    cat("Best : ", paste(conf),"\n")
-    cat("\n")
-    cat("Total time spent: ", sprintf("%.3f",x$run.time)," seconds \n",sep="")
-    cat("-----------------------------------------------------------\n")
-    cat("\n")
-  }
 }
