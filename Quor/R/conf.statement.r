@@ -99,7 +99,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     m <- rep_len(0,ngroups)
     for (i in 1:ngroups) {
         for(j in 1:nrows)
-            data[[i]][j,] <- sort(data[[i]][j,])
+            data[[i]][j,] <- sort(data[[i]][j,],na.last=T)
         m[i] <- dim(data[[i]])[2]
  #       print(data[[i]])
         if(verbose) print(paste('[info] Group',i,'has',m[i],'elements'))
