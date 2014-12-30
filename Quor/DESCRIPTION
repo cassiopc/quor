@@ -1,14 +1,15 @@
 Package: Quor
 Version: 0.1
-Date: 2014-04-30
-Title: Quantile Ordering R package
+Date: 2014-12-30
+Title: Quantile Ordering
 Author: Adriano Polpo <polpo@ufscar.br>,
-        Carlos Alberto de Braganca Pereira <cpereira@ime.usp.br>,
-		Cassio Polpo de Campos <cassiopc@acm.org>
-Maintainer: Adriano Polpo <polpo@ufscar.br>
-Depends: R (>= 2.15.0), combinat
-Description: This package contains functions to compute confidence
-             statistics for ordering population quantiles.
+        Carlos A. de B. Pereira <cpereira@ime.usp.br>,
+	Cassio P. de Campos <cassiopc@acm.org>
+Maintainer: Cassio P. de Campos <cassiopc@acm.org>
+Depends: R (>= 3.1.2)
+Imports: combinat
+Description: Functions to compute confidence statistics
+	     for ordering population quantiles.
 License: GPL (>= 3) | file LICENSE
 Repository: Google Code
 URL: http://code.google.com/p/quor/
