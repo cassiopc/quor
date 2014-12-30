@@ -16,7 +16,7 @@
 ##    You should have received a copy of the GNU General Public License
 ##    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
+conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE) {
     Call <- match.call()
 
     ## Conditions for data
@@ -42,10 +42,10 @@ conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE
         pooleddata[[2]] <- data[[i]]
         if(k < 0) {
             if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS SMALLER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
-            cs <- conf.statement(pooleddata,quantiles,ordering=c(2,1),verbose=verbose)
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(2,1),verbose=verbose,logscale=logscale)
         } else {
             if(verbose) cat(paste('[info] CHECKING IF GROUP',i,'HAS GREATER QUANTILE THAN POOLED GROUP OF ALL OTHERS\n'))
-            cs <- conf.statement(pooleddata,quantiles,ordering=c(1,2),verbose=verbose)
+            cs <- conf.statement(pooleddata,quantiles,ordering=c(1,2),verbose=verbose,logscale=logscale)
         }
         res <- rbind(res,cs$confidence)
     }
@@ -65,7 +65,7 @@ conf.statement.pooled <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE
 
 ################################################################################
 ## Evaluate the confidence statement for populations' quantiles
-conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
+conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE) {
     ##    data:   is a list with all groups to be test. Each element can be
     ##            a vector with the elements, or a matrix, in which case each
     ##            row will be considered as a different covariate to be tested
@@ -240,7 +240,10 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE) {
     out$total.covariates <- nrows
     out$order <- ordering
     out$quantiles <- quantiles
-    out$confidence <- result
+    if(logscale)
+        out$confidence <- result
+    else
+        out$confidence <- exp(result)
     out$run.time <- (proc.time()[3]-initial.time)
     if(verbose) cat(paste('[info] Computation took',out$run.time,'seconds to be completed\n'))
     class(out) <- "conf.statement"

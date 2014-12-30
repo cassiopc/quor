@@ -15,8 +15,8 @@
   Evaluates the Confidence Statement for Ordered Population Quantiles.
 }
 \usage{
- conf.statement(data,quantiles=NULL,ordering=NULL,verbose=TRUE)
- conf.statement.pooled(data,quantiles=NULL,ordering=NULL,verbose=TRUE)
+ conf.statement(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE)
+ conf.statement.pooled(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE)
 }
 \arguments{
 \item{data}{is a list with all groups to be test. Each element can be
@@ -30,6 +30,7 @@
                 is the number of groups. It tells us which orderings are to be
                 tested. If null, then it is assumed all orderings to be tested.}
 \item{verbose}{if TRUE, display results on screen, FALSE otherwise.}
+\item{logscale}{if TRUE, return confidence values in log scale.}
 }
 \details{
   The confidence statement is evaluated for the population quantiles consedering:
@@ -48,7 +49,7 @@
 \value{
   A list (with class "conf.statement") with components:
   \item{call}{command evaluated.}
-  \item{confidence}{the confidence statement level as a matrix permutations by variables.}
+  \item{confidence}{the (log) confidence statement level as a matrix permutations by variables.}
   \item{quantiles}{the quantiles of interested for each of the k groups.}
   \item{order}{the permutations of groups that were used.}
   \item{total.groups}{the total number of groups.}
