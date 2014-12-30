@@ -16,7 +16,8 @@
 }
 \usage{
  conf.statement(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE)
- conf.statement.pooled(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logscale=FALSE)
+ conf.statement.pooled(data,quantiles=NULL,ordering=NULL,
+                       verbose=TRUE,logscale=FALSE)
 }
 \arguments{
 \item{data}{is a list with all groups to be test. Each element can be

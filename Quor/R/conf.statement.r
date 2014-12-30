@@ -240,6 +240,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logsca
     out$total.covariates <- nrows
     out$order <- ordering
     out$quantiles <- quantiles
+    out$logscale <- logscale
     if(logscale)
         out$confidence <- result
     else
@@ -251,7 +252,7 @@ conf.statement <- function(data,quantiles=NULL,ordering=NULL,verbose=TRUE,logsca
 }
 
 print.conf.statement <- function(x, ...) {
-    cat(paste(x$call,'\n'))
+    cat('CALL: ',paste(x$call[1]),'(',paste(x$call[-1],collapse=','),')\n')
 
     if (sum(x$confidence <= 1) == 0) {
         cat("It was not possible to find a confidence statement.\n")
@@ -268,6 +269,7 @@ print.conf.statement <- function(x, ...) {
         cat("Number of permutations:",n,"\n")
         cat("Number of groups:",x$total.groups,"\n")
         cat("Number of variables:",x$total.covariates,"\n")
+        cat("Logscale:",ifelse(x$logscale,"TRUE","FALSE"),"\n")
         cat("\n")
         dots=''
         m = dim(x$confidence)[2]
@@ -277,10 +279,10 @@ print.conf.statement <- function(x, ...) {
         }
         conf = apply(as.matrix(x$confidence[,1:m]),2,max)
         for(i in 1:n) {
-            if(x$pooled) cat(x$order[i], " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
-            else cat(paste(x$order[i,]), " : ", paste(exp(x$confidence[i,1:m])),dots,"\n")
+            if(x$pooled) cat(x$order[i], " : ", paste(x$confidence[i,1:m]),dots,"\n")
+            else cat(paste(x$order[i,]), " : ", paste(x$confidence[i,1:m]),dots,"\n")
         }
-        cat("Best : ", paste(exp(conf)),"\n")
+        cat("Best : ", paste(conf),"\n")
         cat("\n")
         cat("Total time spent: ", sprintf("%.3f",x$run.time)," seconds \n",sep="")
         cat("-----------------------------------------------------------\n")
