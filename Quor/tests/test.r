@@ -20,8 +20,8 @@
 ## depend on it for any of its functionalities
 
 ############################################
-source('loadlibs.r')
-loadlibs(forcelocal=TRUE)
+##source('loadlibs.r')
+##loadlibs(forcelocal=TRUE)
 
 ## Evaluateing confidence statement for more 
 ## than 2 groups with normal distributions.
@@ -45,8 +45,8 @@ if(FALSE) {
                                          ## Please refer to
                                          ## http://www.stanleygenomics.org and
                                          ## http://dx.doi.org/10.1186/1471-2164-7-70
-    source('loadlibs.r')
-    loadlibs(forcelocal=TRUE)
+##    source('loadlibs.r')
+##    loadlibs(forcelocal=TRUE)
     data <- NULL
     data[[1]] <- t(as.matrix(a[a[,1]==1,2:20993]))
     data[[2]] <- t(as.matrix(a[a[,1]==2,2:20993]))
